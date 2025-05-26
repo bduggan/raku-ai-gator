@@ -1,0 +1,230 @@
+#!/usr/bin/env raku
+
+use Test;
+use AI::Gator;
+use AI::Gator::Session;
+use JSON::Fast;
+use Log::Async;
+
+logger.send-to: "test.out"; #untapped-ok = True;
+
+plan 6;
+
+# Mock HTTP client for integration testing
+class IntegrationMockHTTP {
+    has @.call-log;
+    has %.stream-responses;
+    
+    method post($url, *%args) {
+        @!call-log.push: %( type => 'post', :$url, |%args );
+        
+        # Simulate different API responses based on URL
+        if $url.contains('chat/completions') {
+            return %(
+                success => True,
+                content => to-json(%(
+                    choices => [%(
+                        message => %(
+                            content => 'This is a test response from the AI.'
+                        )
+                    )]
+                )).encode
+            );
+        }
+        
+        return %( success => True, content => '{"status": "ok"}'.encode );
+    }
+    
+    method post-stream($url, *%args) {
+        @!call-log.push: %( type => 'stream', :$url, |%args );
+        
+        # Return a supply that emits SSE-formatted data
+        return supply {
+            emit 'data: {"choices":[{"delta":{"content":"Hello"}}]}'.encode;
+            emit "\n".encode;
+            emit 'data: {"choices":[{"delta":{"content":" world"}}]}'.encode;
+            emit "\n".encode;
+            emit 'data: {"choices":[{"finish_reason":"stop"}]}'.encode;
+            emit "\n".encode;
+            emit 'data: [DONE]'.encode;
+            emit "\n".encode;
+        }
+    }
+}
+
+subtest 'Complete Conversation Flow' => {
+    plan 4;
+    
+    my $mock-http = IntegrationMockHTTP.new;
+    my $gator = AI::Gator.new(:model<gpt-3.5-turbo>, :ua($mock-http));
+    my $session = AI::Gator::Session.new;
+    
+    # Add initial message
+    $session.add-message('Hello, AI!');
+    
+    # Test chat-once (non-streaming)
+    my $response = $gator.chat-once($session);
+    is $response, 'This is a test response from the AI.', 'Non-streaming chat works';
+    
+    # Verify the HTTP call was made correctly
+    is $mock-http.call-log.elems, 1, 'One HTTP call made';
+    is $mock-http.call-log[0]<type>, 'post', 'Call was a POST request';
+    ok $mock-http.call-log[0]<url>.contains('chat/completions'), 'Called chat completions endpoint';
+}
+
+subtest 'Tool Integration Workflow' => {
+    plan 6;
+    
+    my $tool-called = False;
+    my $tool-args;
+    
+    my @tools = ( %(
+        spec => %(
+            function => %(
+                name => 'calculator',
+                description => 'Performs basic math operations',
+                parameters => %(
+                    type => 'object',
+                    properties => %(
+                        operation => %( type => 'string' ),
+                        a => %( type => 'number' ),
+                        b => %( type => 'number' )
+                    )
+                )
+            )
+        ),
+        func => sub (:$operation, :$a, :$b) {
+            $tool-called = True;
+            $tool-args = %( :$operation, :$a, :$b );
+            given $operation {
+                when 'add' { $a + $b }
+                when 'multiply' { $a * $b }
+                default { 'Unknown operation' }
+            }
+        }
+    ), );
+    
+    my $gator = AI::Gator.new(:model<test>, :@tools);
+    my $session = AI::Gator::Session.new;
+    
+    # Simulate receiving a tool call
+    $session.add-tool-call(%(
+        id => 'call_abc123',
+        name => 'calculator',
+        arguments => to-json(%( operation => 'add', a => 5, b => 3 ))
+    ));
+    
+    # Capture output
+    my $captured-output = '';
+    $gator.^find_method('output').wrap: -> $self, $text { $captured-output ~= $text };
+    
+    # Execute tool calls
+    $gator.do-tool-calls($session);
+    
+    ok $tool-called, 'Tool function was called';
+    is $tool-args<operation>, 'add', 'Tool received correct operation';
+    is $tool-args<a>, 5, 'Tool received correct first argument';
+    is $tool-args<b>, 3, 'Tool received correct second argument';
+    
+    # Check that messages were added to session
+    is $session.messages.elems, 2, 'Two messages added (tool call + response)';
+    is $session.messages[1]<role>, 'tool', 'Second message is tool response';
+}
+
+subtest 'Session Persistence Integration' => {
+    plan 4;
+    
+    my $temp-dir = $*TMPDIR.child('integration-test-sessions');
+    mkdir $temp-dir unless $temp-dir.d;
+    
+    # Create session with conversation
+    my $session = AI::Gator::Session.new(:session-dir($temp-dir));
+    $session.add-message('What is the weather?');
+    $session.add-message('It is sunny today.', :role<assistant>);
+    
+    # Save session
+    $session.save(:summary('Weather inquiry'));
+    
+    ok $session.session-file.e, 'Session file was created';
+    
+    # Load and verify session content
+    my $saved-data = from-json($session.session-file.slurp);
+    is $saved-data<messages>.elems, 2, 'Both messages saved';
+    is $saved-data<summary>, 'Weather inquiry', 'Summary saved correctly';
+    ok $saved-data<timestamp>, 'Timestamp recorded';
+    
+    # Cleanup
+    $session.session-file.unlink if $session.session-file.e;
+    $temp-dir.rmdir if $temp-dir.d;
+}
+
+subtest 'Gemini Integration Differences' => {
+    plan 5;
+    
+    %*ENV<GEMINI_API_KEY> = 'test-gemini-key';
+    my $gemini = AI::Gator::Gemini.new(:model<gemini-pro>);
+    my $session = AI::Gator::Session::Gemini.new;
+    
+    # Test message format differences
+    $session.add-message('Hello Gemini');
+    is $session.messages[0]<role>, 'user', 'Gemini session uses correct role';
+    ok $session.messages[0]<parts>, 'Gemini message has parts structure';
+    is $session.messages[0]<parts>[0]<text>, 'Hello Gemini', 'Text content in parts';
+    
+    # Test tool call format
+    my %tool-call = name => 'test_tool', args => %( param => 'value' );
+    $gemini.add-tool-call-message($session, %tool-call);
+    
+    is $session.messages[1]<role>, 'model', 'Gemini tool call uses model role';
+    ok $session.messages[1]<parts>[0]<functionCall>, 'Function call structure present';
+}
+
+subtest 'Streaming Response Integration' => {
+    plan 3;
+    
+    my $mock-http = IntegrationMockHTTP.new;
+    my $gator = AI::Gator.new(:model<test>, :ua($mock-http));
+    my $session = AI::Gator::Session.new;
+    
+    $session.add-message('Stream test');
+    
+    # Test streaming supply creation
+    my $stream = $gator.chat-stream($session);
+    isa-ok $stream, Supply, 'Chat stream returns Supply';
+    
+    # Test that stream processing works
+    my $byte-stream = supply { emit "test data\n".encode };
+    my $processed = $gator.process-byte-stream($byte-stream, $session);
+    isa-ok $processed, Supply, 'Byte stream processing returns Supply';
+    
+    # Verify streaming endpoint was called
+    react whenever $stream { last }
+    is $mock-http.call-log.elems, 1, 'Streaming endpoint called';
+}
+
+subtest 'Memory and State Management' => {
+    plan 4;
+    
+    my $gator = AI::Gator.new(:model<test>);
+    my $session = AI::Gator::Session.new;
+    
+    # Test that session maintains state across operations
+    $session.add-message('First message');
+    $session.add-message('Second message', :role<assistant>);
+    
+    # Test finish reason tracking
+    $session.last-finish-reason = 'stop';
+    is $session.last-finish-reason, 'stop', 'Finish reason tracked correctly';
+    
+    # Test tool call state management
+    $session.add-tool-call(%( id => 'call_1', name => 'test', arguments => '{}' ));
+    ok $session.has-pending-tool-calls, 'Pending tool calls tracked';
+    
+    $session.clear-tool-calls;
+    nok $session.has-pending-tool-calls, 'Tool calls cleared correctly';
+    
+    # Test message count persistence
+    is $session.messages.elems, 2, 'Message count maintained throughout operations';
+}
+
+done-testing;

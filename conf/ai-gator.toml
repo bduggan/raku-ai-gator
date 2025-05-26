@@ -1,0 +1,2 @@
+model = "gemini-1.5-flash"
+class = 'AI::Gator::Gemini'

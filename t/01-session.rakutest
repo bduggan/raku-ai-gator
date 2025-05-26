@@ -1,0 +1,131 @@
+#!/usr/bin/env raku
+
+use Test;
+use AI::Gator::Session;
+use JSON::Fast;
+use Log::Async;
+
+logger.untapped-ok = True;
+
+plan 7;
+
+subtest 'Basic Session Creation' => {
+    plan 4;
+    
+    my $session = AI::Gator::Session.new;
+    isa-ok $session, AI::Gator::Session, 'Session created successfully';
+    is $session.messages.elems, 0, 'Session starts with no messages';
+    is $session.tool-calls.elems, 0, 'Session starts with no tool calls';
+    is $session.last-finish-reason, '', 'Session starts with empty finish reason';
+}
+
+subtest 'Message Management' => {
+    plan 6;
+    
+    my $session = AI::Gator::Session.new;
+    
+    # Test basic message addition
+    $session.add-message('Hello, world!');
+    is $session.messages.elems, 1, 'Message added successfully';
+    is $session.messages[0]<role>, 'user', 'Default role is user';
+    is $session.messages[0]<content>, 'Hello, world!', 'Content stored correctly';
+    
+    # Test message with custom role
+    $session.add-message('Hello back!', :role<assistant>);
+    is $session.messages.elems, 2, 'Second message added';
+    is $session.messages[1]<role>, 'assistant', 'Custom role set correctly';
+    
+    # Test message with additional args
+    $session.add-message(:role<system>, :custom-arg<value>);
+    is $session.messages[2]<custom-arg>, 'value', 'Additional args preserved';
+}
+
+subtest 'Tool Call Management' => {
+    plan 5;
+    
+    my $session = AI::Gator::Session.new;
+    
+    # Add a tool call
+    my %tool-call = name => 'test_function', arguments => '{"param": "value"}', id => 'call_123';
+    $session.add-tool-call(%tool-call);
+    
+    is $session.tool-calls.elems, 1, 'Tool call added';
+    ok $session.has-pending-tool-calls, 'Has pending tool calls';
+    is $session.tool-calls[0]<name>, 'test_function', 'Tool call name preserved';
+    
+    # Clear tool calls
+    $session.clear-tool-calls;
+    is $session.tool-calls.elems, 0, 'Tool calls cleared';
+    nok $session.has-pending-tool-calls, 'No pending tool calls after clear';
+}
+
+subtest 'with-message Method' => {
+    plan 3;
+    
+    my $session = AI::Gator::Session.new;
+    $session.add-message('First message');
+    
+    my @messages = $session.with-message('Temporary message');
+    is @messages.elems, 2, 'with-message returns original + new message';
+    is @messages[1]<content>, 'Temporary message', 'New message content correct';
+    is $session.messages.elems, 1, 'Original session unchanged';
+}
+
+subtest 'Session File Handling' => {
+    plan 3;
+    
+    # Test with custom session directory
+    my $temp-dir = $*TMPDIR.child('test-gator-sessions');
+    my $session = AI::Gator::Session.new(:session-dir($temp-dir));
+    
+    isa-ok $session.session-dir, IO::Path, 'Session directory is IO::Path';
+    isa-ok $session.session-file, IO::Path, 'Session file is IO::Path';
+    ok $session.session-file.dirname.contains('test-gator-sessions'), 'Session file in correct directory';
+    
+    # Cleanup
+    $temp-dir.rmdir if $temp-dir.d;
+}
+
+subtest 'Session Saving' => {
+    plan 5;
+    
+    my $temp-dir = $*TMPDIR.child('test-gator-save');
+    mkdir $temp-dir unless $temp-dir.d;
+    my $session-file = $temp-dir.child('test-session.json');
+    
+    my $session = AI::Gator::Session.new(:$session-file);
+    $session.add-message('Test message');
+    
+    lives-ok { $session.save(:summary('Test summary')) }, 'Session saves without error';
+    ok $session-file.e, 'Session file created';
+    
+    # Verify content
+    if $session-file.e {
+        my $content = from-json($session-file.slurp);
+        is $content<messages>.elems, 1, 'Message saved correctly';
+        is $content<summary>, 'Test summary', 'Summary saved correctly';
+        ok $content<timestamp>, 'Timestamp saved';
+        
+        # Cleanup
+        $session-file.unlink;
+    }
+    $temp-dir.rmdir if $temp-dir.d;
+}
+
+subtest 'Gemini Session Tests' => {
+    plan 4;
+    
+    my $session = AI::Gator::Session::Gemini.new;
+    isa-ok $session, AI::Gator::Session::Gemini, 'Gemini session created';
+    
+    # Test Gemini-specific message format
+    $session.add-message('Hello Gemini');
+    is $session.messages[0]<parts>[0]<text>, 'Hello Gemini', 'Gemini message format correct';
+    ok $session.messages[0]<parts>, 'Parts array exists';
+    
+    # Test with-message for Gemini
+    my @messages = $session.with-message('Test message');
+    is @messages[*-1]<parts>[0]<text>, 'Test message', 'Gemini with-message format correct';
+}
+
+done-testing;

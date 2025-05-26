@@ -1,0 +1,78 @@
+#!/usr/bin/env raku
+
+use AI::Gator;
+use AI::Gator::Tools;
+use TOML;
+use Log::Async <warning color use-args>;
+use JSON::Fast;
+use Terminal::ANSI::OO 't';
+use HTTP::Tiny;
+use Prompt;
+
+my $*GATOR-HOME = (%*ENV<AI_GATOR_HOME> // $*HOME.child('ai-gator')).IO;
+$*GATOR-HOME.d or do {
+  warning "$*GATOR-HOME not found, creating it.";
+  mkdir $*GATOR-HOME;
+}
+
+my $conf-file = $*GATOR-HOME.child('config.toml');
+warning "Missing config file $conf-file." unless $conf-file.IO.e;
+my $conf = from-toml($conf-file.IO.slurp) if $conf-file.IO.e;
+warning "No configuration, using defaults." unless $conf;
+
+my $base-uri = $conf<url>;
+my $session-dir = ($conf<session_dir> // $*GATOR-HOME).child('sessions');
+my $history = $conf<history_file> // $*GATOR-HOME.child('.history');
+my $*tool-dir = $conf<tool_dir> // $*GATOR-HOME.child('tools');
+
+multi MAIN('tools') {
+  info "looking for tools in $*tool-dir";
+  my $tools = get-tools;
+  say join "\n", $tools.map: *<spec><function><name description>.fmt('%25s', ' : ')
+}
+
+multi MAIN('tool', $name) {
+  my $spec = get-tool-spec($name);
+  say to-json $spec;
+  exit unless $spec;
+  my &tool := get-tool($name);
+  say "loaded $name as tool.  Try calling &tool";
+  repl;
+}
+
+multi MAIN(
+   Str :$model = ($conf<default_model> // $conf<model> // 'gpt-4.4o') #= The name of the model, e.g. 'gpt-4o'
+) {
+  my $adapter-conf = 'AI::Gator';
+  my $session-class-conf = 'AI::Gator::Session';
+  with $conf<adapter> -> $adapter {
+    $adapter-conf = "AI::Gator::$adapter";
+    $session-class-conf = "AI::Gator::Session::$adapter";
+  }
+
+  info "model $model, adapter $adapter-conf";
+  info "session class $session-class-conf";
+  my AI::Gator $adapter-class = $adapter-conf.EVAL.new;
+  my $session-class = $session-class-conf.EVAL.new;
+
+  my $client = $adapter-class.new: :$model, tools => get-tools, |%( $base-uri ?? :$base-uri !! Empty);
+  my $session = $session-class.new: :$session-dir;
+
+  say "Type ^D to exit.";
+  my $p = Prompt.new: :editor<LineEditor>, :$history;
+  loop {
+    unless $session.last-finish-reason.fc eq 'tool_calls'.fc {
+      my $content = trim $p.readline( t.green ~ "You:" ~ t.text-reset ~ ' ') // last;
+      $p.save-history;
+      $session.add-message($content);
+    }
+
+    my $response = $client.get-response($session);
+
+    $client.do-tool-calls($session); 
+    debug "done with tool calls and response is { $response.raku }";
+    $response ||= $client.get-response($session);
+    $session.add-message: :role<assistant>, $response if $response;
+  }
+  $session.save(summary => $client.summarize($session)) if $session.messages > 3;
+} 

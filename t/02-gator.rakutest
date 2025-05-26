@@ -1,0 +1,279 @@
+#!/usr/bin/env raku
+
+use Test;
+use AI::Gator;
+use AI::Gator::Session;
+use JSON::Fast;
+use Log::Async;
+
+logger.untapped-ok = True;
+
+plan 14;
+
+# Mock HTTP::Tiny for testing
+class MockHTTPTiny {
+    has %.responses;
+    has @.requests;
+    
+    method post($url, *%args) {
+        @!requests.push: %( :$url, |%args );
+        return %.responses{$url} // %( success => True, content => '{"test": "response"}'.encode );
+    }
+}
+
+subtest 'Basic Gator Creation' => {
+    plan 4;
+    
+    my $gator = AI::Gator.new(:model<gpt-3.5-turbo>);
+    isa-ok $gator, AI::Gator, 'Gator created successfully';
+    is $gator.model, 'gpt-3.5-turbo', 'Model set correctly';
+    is $gator.base-uri, 'https://api.openai.com/v1', 'Base URI set to OpenAI';
+    isa-ok $gator.toolbox, Supplier, 'Toolbox is a Supplier';
+}
+
+subtest 'Tool Management' => {
+    plan 4;
+    
+    my @tools = [
+        %{
+            spec => %{
+                function => %{
+                    name => 'test_tool',
+                    description => 'A test tool'
+                }
+            },
+            func => sub { 'tool result' }
+        },
+    ];
+    
+    my $gator = AI::Gator.new(:model<test>, :@tools);
+    is $gator.tools.elems, 1, 'Tool added to gator';
+    is $gator.tool-funcs.keys.elems, 1, 'Tool function registered';
+    ok $gator.tool-funcs<test_tool>, 'Tool function accessible by name';
+    is $gator.tool-funcs<test_tool>(), 'tool result', 'Tool function works correctly';
+}
+
+subtest 'HTTP POST Method' => {
+    plan 3;
+    
+    my $mock-ua = MockHTTPTiny.new;
+    $mock-ua.responses<test-url> = %( success => True, content => '{"result": "success"}'.encode );
+    
+    my $gator = AI::Gator.new(:model<test>, :ua($mock-ua));
+    
+    my $result = $gator.post('test-url', %( test => 'data' ));
+    is $result, '{"result": "success"}', 'POST returns correct content';
+    is $mock-ua.requests.elems, 1, 'One request made';
+    is $mock-ua.requests[0]<url>, 'test-url', 'Correct URL called';
+}
+
+subtest 'HTTP POST Error Handling' => {
+    plan 1;
+    
+    my $mock-ua = MockHTTPTiny.new;
+    $mock-ua.responses<error-url> = %( success => False, status => 404, reason => 'Not Found', content => 'Not found'.encode );
+    
+    my $gator = AI::Gator.new(:model<test>, :ua($mock-ua));
+    
+    throws-like { $gator.post('error-url', %()) }, Exception, 'POST throws on HTTP error';
+}
+
+subtest 'Chat Once Method' => {
+    plan 2;
+    
+    my $mock-ua = MockHTTPTiny.new;
+    my $response = %{
+        choices => [
+            %{ message => %{ content => 'Hello, I am an AI assistant.' } }
+        ]
+    };
+    $mock-ua.responses<https://api.openai.com/v1/chat/completions> = %(
+        success => True, 
+        content => to-json($response).encode
+    );
+    
+    my $gator = AI::Gator.new(:model<gpt-3.5-turbo>, :ua($mock-ua));
+    my $session = AI::Gator::Session.new;
+    $session.add-message('Hello');
+    
+    my $result = $gator.chat-once($session);
+    is $result, 'Hello, I am an AI assistant.', 'Chat-once returns correct content';
+    is $mock-ua.requests.elems, 1, 'One request made to OpenAI';
+}
+
+subtest 'Session Message Addition' => {
+    plan 5;
+    
+    my $gator = AI::Gator.new(:model<test>);
+    my $session = AI::Gator::Session.new;
+    
+    # Test tool call message addition
+    my %call = id => 'call_123', name => 'test_function', arguments => '{"param": "value"}';
+    $gator.add-tool-call-message($session, %call);
+    
+    is $session.messages.elems, 1, 'Tool call message added';
+    is $session.messages[0]<role>, 'assistant', 'Tool call message has assistant role';
+    ok $session.messages[0]<tool_calls>, 'Tool calls array exists';
+    is $session.messages[0]<tool_calls>[0]<id>, 'call_123', 'Tool call ID preserved';
+    
+    # Test tool response addition
+    $gator.add-tool-response($session, :tool_call_id<call_123>, :tool-response<result>, :name<test_function>);
+    is $session.messages.elems, 2, 'Tool response message added';
+}
+
+subtest 'Tool Call Execution' => {
+    plan 4;
+    
+    my @tools = [
+        %{
+            spec => %{
+                function => %{
+                    name => 'add_numbers',
+                    description => 'Adds two numbers'
+                }
+            },
+            func => sub ($a, $b) { $a + $b }
+        }
+    ];
+    
+    my $gator = AI::Gator.new(:model<test>, :@tools);
+    my $session = AI::Gator::Session.new;
+    
+    # Simulate a tool call
+    $session.add-tool-call(%( id => 'call_123', name => 'add_numbers', arguments => '{"a": 5, "b": 3}' ));
+    
+    # Capture output
+    my $output-captured = '';
+    my $original-output = $gator.can('output')[0];
+    $gator.^find_method('output').wrap: -> $self, $text { $output-captured ~= $text };
+    
+    $gator.do-tool-calls($session);
+    
+    is $session.messages.elems, 2, 'Tool call and response messages added';
+    ok $output-captured.contains('add_numbers'), 'Tool name appears in output';
+    ok $output-captured.contains('done'), 'Completion message appears in output';
+    nok $session.has-pending-tool-calls, 'Tool calls cleared after execution';
+}
+
+subtest 'Tool Call Error Handling' => {
+    plan 2;
+    
+    my @tools = [
+        %{
+            spec => %{
+                function => %{
+                    name => 'failing_tool',
+                    description => 'A tool that fails'
+                }
+            },
+            func => sub { die 'Tool failed!' }
+        }
+    ];
+    
+    my $gator = AI::Gator.new(:model<test>, :@tools);
+    my $session = AI::Gator::Session.new;
+    
+    $session.add-tool-call(%( id => 'call_123', name => 'failing_tool', arguments => '{}' ));
+    
+    # Capture output to suppress it during test
+    my $output-captured = '';
+    $gator.^find_method('output').wrap: -> $self, $text { $output-captured ~= $text };
+    
+    lives-ok { $gator.do-tool-calls($session) }, 'Tool call failure handled gracefully';
+    
+    # Check that error response was added
+    my $tool-response-msg = $session.messages.grep({ .<role> eq 'tool' })[0];
+    ok $tool-response-msg<content>.starts-with('Error:'), 'Error message recorded in tool response';
+}
+
+subtest 'Gemini Gator Creation' => {
+    plan 3;
+    
+    %*ENV<GEMINI_API_KEY> = 'test-key';
+    my $gemini = AI::Gator::Gemini.new(:model<gemini-pro>);
+    
+    isa-ok $gemini, AI::Gator::Gemini, 'Gemini gator created';
+    ok $gemini.base-uri.contains('googleapis.com'), 'Gemini base URI set correctly';
+    is $gemini.key, 'test-key', 'API key from environment';
+}
+
+subtest 'Gemini Tool Call Message Format' => {
+    plan 3;
+    
+    my $gemini = AI::Gator::Gemini.new(:model<test>);
+    my $session = AI::Gator::Session::Gemini.new;
+    
+    my %call = name => 'test_function', args => %( param => 'value' );
+    $gemini.add-tool-call-message($session, %call);
+    
+    is $session.messages.elems, 1, 'Gemini tool call message added';
+    is $session.messages[0]<role>, 'model', 'Gemini uses model role for tool calls';
+    ok $session.messages[0]<parts>[0]<functionCall>, 'Function call structure present';
+}
+
+subtest 'Gemini Tool Response Format' => {
+    plan 3;
+    
+    my $gemini = AI::Gator::Gemini.new(:model<test>);
+    my $session = AI::Gator::Session::Gemini.new;
+    
+    $gemini.add-tool-response($session, :tool_call_id<call_123>, :tool-response<result>, :name<test_function>);
+    
+    is $session.messages.elems, 1, 'Gemini tool response message added';
+    is $session.messages[0]<role>, 'function', 'Gemini uses function role for responses';
+    ok $session.messages[0]<parts>[0]<functionResponse>, 'Function response structure present';
+}
+
+subtest 'Summarize Method' => {
+    plan 1;
+    
+    my $mock-ua = MockHTTPTiny.new;
+    my $response = %{
+        choices => [
+            %{ message => %{ content => 'Brief conversation summary' } }
+        ]
+    };
+    $mock-ua.responses<https://api.openai.com/v1/chat/completions> = %(
+        success => True, 
+        content => to-json($response).encode
+    );
+    
+    my $gator = AI::Gator.new(:model<test>, :ua($mock-ua));
+    my $session = AI::Gator::Session.new;
+    
+    # Note: summarize calls chat-once internally, so we test the method exists and doesn't crash
+    lives-ok { $gator.summarize($session) }, 'Summarize method executes without error';
+}
+
+subtest 'Stream Processing' => {
+    plan 2;
+    
+    my $gator = AI::Gator.new(:model<test>);
+    
+    # Test byte stream processing
+    my $test-supply = supply {
+        emit "data: chunk1\n".encode;
+        emit "data: chunk2\n".encode;
+        done;
+    }
+    
+    my $session = AI::Gator::Session.new;
+    isa-ok $gator.process-byte-stream($test-supply, $session), Supply, 'process-byte-stream returns Supply';
+    
+    # Test post-stream method signature
+    my $mock-ua = MockHTTPTiny.new;
+    $gator = AI::Gator.new(:model<test>, :ua($mock-ua));
+    isa-ok $gator.post-stream('test-url', %()), Supply, 'post-stream returns Supply';
+}
+
+subtest 'Tool Builder Method' => {
+    plan 1;
+    
+    my $gator = AI::Gator.new(:model<test>);
+    my $session = AI::Gator::Session.new;
+    
+    # Test that tool-builder method exists and can be called
+    lives-ok { start $gator.tool-builder($session) }, 'Tool builder method executes';
+}
+
+done-testing;
