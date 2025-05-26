@@ -9,21 +9,6 @@ AI::Gator - Ailigator -- your AI Generic Assistant with a Tool-Oriented REPL
 SYNOPSIS
 ========
 
-    use AI::Gator;
-
-    my AI::Gator $gator = AI::Gator::Gemini.new: model => 'gemini-2.0-flash';
-    my AI::Gator::Session $session = AI::Gator::Session::Gemini.new;
-
-    $session.add-message: "Hello, Gator!";
-
-    react whenever $gator.chat($session) -> $chunk {
-      print $chunk;
-    }
-
-    # Hello! How can I help you today?
-
-Command-line usage with tools:
-
 Put this into $HOME/ai-gator/tools/weather.raku:
 
     #| Get real time weather for a given city
@@ -45,6 +30,21 @@ Then start the AI Gator REPL:
 For other options, run:
 
     $ ai-gator -h
+
+This module can also be used programmatically:
+
+    use AI::Gator;
+
+    my AI::Gator $gator = AI::Gator::Gemini.new: model => 'gemini-2.0-flash';
+    my AI::Gator::Session $session = AI::Gator::Session::Gemini.new;
+
+    $session.add-message: "Hello, Gator!";
+
+    react whenever $gator.chat($session) -> $chunk {
+      print $chunk;
+    }
+
+    # Hello! How can I help you today?
 
 DESCRIPTION
 ===========
