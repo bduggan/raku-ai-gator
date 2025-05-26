@@ -4,7 +4,9 @@ use Terminal::ANSI::OO 't';
 use HTTP::Tiny;
 use JSON::Fast;
 
-#| Base class, which is OpenAI-compatible.
+logger.untapped-ok = True;
+
+# Base class, which is OpenAI-compatible.
 class AI::Gator {
 
   has $.toolbox = Supplier.new;
@@ -26,20 +28,23 @@ class AI::Gator {
     }
   }
 
-  method post(Str $url!, Hash $content! --> Str) {
-    debug "POST $url with content: " ~ to-json $content;
-    my $res = $.ua.post: $url,
-      :content(to-json $content),
-      headers => { 'Content-Type' => 'application/json' };
+  method post(Str $url!, %content!, %more-headers = %( ) --> Str) {
+    debug "POST $url";
+    trace "POST $url with content: " ~ to-json %content;
+    my %headers = 'Content-Type' => 'application/json';
+    %headers.append: %more-headers if %more-headers;
+    my $content = to-json %content;
+    my $res = $.ua.post: $url, :$content, :%headers;
     die "http error ({$res<status reason>}): " ~ ($res<content>.?decode // '') unless $res<success>;
     $res<content>.decode;
   }
 
-  method post-stream(Str $url!, Hash $payload! --> Supply) {
+  method post-stream(Str $url!, Hash $payload!, %more-headers = %( ) --> Supply) {
+    my %headers = 'Content-Type' => 'application/json';
+    %headers.append: %more-headers if %more-headers;
     supply {
       my $errs is default('');
       my $content = to-json $payload;
-      my %headers = 'Content-Type' => 'application/json';
       debug "POST (async) $url with content: " ~ $content;
       my $res = $.ua.post: $url, :$content, :%headers,
         data-callback => sub ( $blob, $state ) {
@@ -76,7 +81,7 @@ class AI::Gator {
     print $text;
   }
 
-  #| Display a streaming response and also emit tool calls as they come in.
+  # Display a streaming response and also emit tool calls as they come in.
   method get-response($session --> Str) {
     my $tool-promise = start self.tool-builder($session);
     my $response is default('');
@@ -98,14 +103,20 @@ class AI::Gator {
   }
 
   method chat-once($session, :@messages = $session.messages --> Str) {
+    my %more-headers;
+    %more-headers<Authorization> = "Bearer $_" with %*ENV<OPENAI_API_KEY>;
     return self.post("{ $.base-uri }/chat/completions",
-      %( :$.model, :@messages, :tools(@.tools.map(*<spec>)) )
+      %( :$.model, :@messages, :tools(@.tools.map(*<spec>)) ),
+      %more-headers
     ).&from-json<choices>[0]<message><content>;
   }
 
   method chat-stream($session, :@messages = $session.messages --> Supply) {
+    my %more-headers;
+    %more-headers<Authorization> = "Bearer $_" with %*ENV<OPENAI_API_KEY>;
     return self.post-stream: "{ $.base-uri }/chat/completions",
-      %( :stream, :$.model, :@messages, :tools(@.tools.map(*<spec>)) );
+      %( :stream, :$.model, :@messages, :tools(@.tools.map(*<spec>)) ),
+      %more-headers;
   }
 
   method process-byte-stream(Supply $byte-stream, $session --> Supply) {
@@ -261,3 +272,111 @@ class AI::Gator::Gemini is AI::Gator {
      }, ];
   }
 } 
+
+=begin pod
+
+=head1 NAME
+
+AI::Gator - Ailigator -- your AI Generic Assistant with a Tool-Oriented REPL
+
+=head1 SYNOPSIS
+
+  use AI::Gator;
+
+  my AI::Gator $gator = AI::Gator::Gemini.new: model => 'gemini-2.0-flash';
+  my AI::Gator::Session $session = AI::Gator::Session::Gemini.new;
+
+  $session.add-message: "Hello, Gator!";
+
+  react whenever $gator.chat($session) -> $chunk {
+    print $chunk;
+  }
+
+  # Hello! How can I help you today?
+
+Command-line usage with tools:
+
+Put this into $HOME/ai-gator/tools/weather.raku:
+
+  #| Get real time weather for a given city
+  our sub get_weather(
+     Str :$city! #= The city to get the weather for
+  ) {
+     "The weather in $city is sunny.";
+  }
+
+Then start the AI Gator REPL:
+
+  $ ai-gator
+
+  You: Hello, what is the weather in Toledo, Ohio?
+  [tool] get_weather city Toledo, Ohio
+  [tool] get_weather done
+  Gator: The weather in Toledo, Ohio is sunny.
+
+For other options, run:
+
+  $ ai-gator -h
+
+=head1 DESCRIPTION
+
+AI::Gator is an AI assistant oriented towards using tools and a REPL interface.
+
+Features:
+
+  - streaming responses
+  - tool definitions in Raku
+  - tool calls
+  - session storage
+  - Gemini and OpenAI support
+  - REPL interface with history
+
+Tools are defined as Raku functions and converted into an OpenAI or Gemini specification using
+declarator pod and other native Raku features.
+
+All sessions are stored in the sessions/ directory, and the REPL stores the history
+in a .history file, readline-style.
+
+=head1 CONFIGURATION
+
+Set AI_GATOR_HOME to ai-gator's home (by default $HOME/ai-gator).
+
+In this directory, the following files and directories are used:
+
+ - config.toml: configuration file
+
+ - tools/: directory with files containing tools
+
+ - sessions/: directory with session files (created by the REPL)
+
+ - .history: file with readline history (also created by the REPL)
+
+=head1 CONFIGURATION FILE
+
+Sample configuration to use Gemini:
+
+  model = "gemini-2.0-flash"
+  adapter = 'Gemini'
+
+Sample configuration to use OpenAI:
+
+  model = "gpt-4o"
+  base-uri = "https://api.openai.com/v1"
+
+=head1 ENVIRONMENT
+
+ - AI_GATOR_HOME: home directory for AI::Gator (default: $HOME/ai-gator)
+
+ - GEMINI_API_KEY: API key for Gemini (if using Gemini)
+
+ - OPENAI_API_KEY: API key for OpenAI (if using OpenAI)
+
+=head1 NOTES
+
+This is all pretty rough and experimental.  Expect the api to change.  Patches welcome!
+
+=head1 AUTHOR
+
+Brian Duggan
+
+=end pod

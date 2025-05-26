@@ -8,13 +8,13 @@
     "AI::Gator::Session" : "lib/AI/Gator/Session.rakumod",
     "AI::Gator::ToolBuilder" : "lib/AI/Gator/ToolBuilder.rakumod",
     "AI::Gator::Tools" : "lib/AI/Gator/Tools.rakumod",
-    "ai" : "bin/ai-gator"
+    "ai-gator" : "bin/ai-gator"
   },
   "build-depends" : [ ],
   "depends" : [
-    "Log::Async:ver<0.0.12>", "HTTP::Tiny"
+    "Log::Async:ver<0.0.12>", "HTTP::Tiny", "Prompt", "JSON::Fast"
   ],
-  "description" : "Command line AI interactions using tools.",
+  "description" : "Ailigator: your AI Generic Assistant with a Tool-Oriented REPL",
   "tags" : [
     "ai"
   ],

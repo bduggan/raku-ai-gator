@@ -6,7 +6,7 @@ use AI::Gator::Session;
 use JSON::Fast;
 use Log::Async;
 
-logger.send-to: "test.out"; #untapped-ok = True;
+logger.untapped-ok = True;
 
 plan 6;
 

@@ -21,16 +21,18 @@ my $conf = from-toml($conf-file.IO.slurp) if $conf-file.IO.e;
 warning "No configuration, using defaults." unless $conf;
 
 my $base-uri = $conf<url>;
-my $session-dir = ($conf<session_dir> // $*GATOR-HOME).child('sessions');
-my $history = $conf<history_file> // $*GATOR-HOME.child('.history');
-my $*tool-dir = $conf<tool_dir> // $*GATOR-HOME.child('tools');
+my $session-dir = $*GATOR-HOME.child('sessions');
+my $history = $*GATOR-HOME.child('.history');
+my $*tool-dir = $*GATOR-HOME.child('tools');
 
+#| List available tools
 multi MAIN('tools') {
   info "looking for tools in $*tool-dir";
   my $tools = get-tools;
   say join "\n", $tools.map: *<spec><function><name description>.fmt('%25s', ' : ')
 }
 
+#| Try out a tool in a debug repl
 multi MAIN('tool', $name) {
   my $spec = get-tool-spec($name);
   say to-json $spec;
@@ -40,6 +42,7 @@ multi MAIN('tool', $name) {
   repl;
 }
 
+#| Start an AI Gator session
 multi MAIN(
    Str :$model = ($conf<default_model> // $conf<model> // 'gpt-4.4o') #= The name of the model, e.g. 'gpt-4o'
 ) {
