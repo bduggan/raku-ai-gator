@@ -12,7 +12,7 @@
   },
   "build-depends" : [ ],
   "depends" : [
-    "Log::Async:ver<0.0.12>", "HTTP::Tiny", "Prompt", "JSON::Fast", "Terminal::ANSI"
+    "Log::Async:ver<0.0.13>", "HTTP::Tiny", "Prompt", "JSON::Fast", "Terminal::ANSI"
   ],
   "description" : "Ailigator: your AI Generic Assistant with a Tool-Oriented REPL",
   "tags" : [
