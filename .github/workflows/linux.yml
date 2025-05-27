@@ -15,7 +15,7 @@ jobs:
         os:
           - ubuntu-latest
         raku-version:
-          - '2024.05'
+          - '2025.02'
           - 'latest'
     runs-on: ${{ matrix.os }}
     steps:
