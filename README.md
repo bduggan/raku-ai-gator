@@ -52,6 +52,8 @@ This module can also be used programmatically:
 
     # Hello! How can I help you today?
 
+![ailigator](https://github.com/user-attachments/assets/0e71fb98-e149-483a-8654-300316e413e8)
+
 DESCRIPTION
 ===========
 
