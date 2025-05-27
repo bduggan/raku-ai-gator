@@ -330,12 +330,17 @@ AI::Gator is an AI assistant oriented towards using tools and a REPL interface.
 
 Features:
 
-  - streaming responses
-  - tool definitions in Raku
-  - tool calls
-  - session storage
-  - Gemini and OpenAI support
-  - REPL interface with history
+- streaming responses
+
+- tool definitions in Raku
+
+- tool calls
+
+- session storage
+
+- Gemini and OpenAI support
+
+- REPL interface with history
 
 Tools are defined as Raku functions and converted into an OpenAI or Gemini specification using
 declarator pod and other native Raku features.
@@ -349,13 +354,13 @@ Set AI_GATOR_HOME to ai-gator's home (by default $HOME/ai-gator).
 
 In this directory, the following files and directories are used:
 
- - config.toml: configuration file
+- config.toml: configuration file
 
- - tools/: directory with files containing tools
+- tools/: directory with files containing tools
 
- - sessions/: directory with session files (created by the REPL)
+- sessions/: directory with session files (created by the REPL)
 
- - .history: file with readline history (also created by the REPL)
+- .history: file with readline history (also created by the REPL)
 
 =head1 CONFIGURATION FILE
 
@@ -371,11 +376,11 @@ Sample configuration to use OpenAI:
 
 =head1 ENVIRONMENT
 
- - AI_GATOR_HOME: home directory for AI::Gator (default: $HOME/ai-gator)
+- AI_GATOR_HOME: home directory for AI::Gator (default: $HOME/ai-gator)
 
- - GEMINI_API_KEY: API key for Gemini (if using Gemini)
+- GEMINI_API_KEY: API key for Gemini (if using Gemini)
 
- - OPENAI_API_KEY: API key for OpenAI (if using OpenAI)
+- OPENAI_API_KEY: API key for OpenAI (if using OpenAI)
 
 =head1 NOTES
 
