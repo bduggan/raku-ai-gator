@@ -6,6 +6,8 @@ NAME
 
 AI::Gator - Ailigator -- your AI Generic Assistant with a Tool-Oriented REPL
 
+<img src="https://github.com/user-attachments/assets/0e71fb98-e149-483a-8654-300316e413e8" alt="ailigator" width="300">
+
 SYNOPSIS
 ========
 
@@ -51,8 +53,6 @@ This module can also be used programmatically:
     }
 
     # Hello! How can I help you today?
-
-![ailigator](https://github.com/user-attachments/assets/0e71fb98-e149-483a-8654-300316e413e8)
 
 DESCRIPTION
 ===========
