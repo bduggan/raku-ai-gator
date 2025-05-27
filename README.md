@@ -22,10 +22,16 @@ Then start the AI Gator REPL:
 
     $ ai-gator
 
-    You: Hello, what is the weather in Toledo, Ohio?
-    [tool] get_weather city Toledo, Ohio
+    You: Is it raining in Toledo?
+    [tool] get_weather city Toledo
     [tool] get_weather done
-    Gator: The weather in Toledo, Ohio is sunny.
+    Gator: No, it is not raining in Toledo. The weather is sunny.
+    You: What about Philadelphia or San Francisco?
+    [tool] get_weather city Philadelphia
+    [tool] get_weather done
+    [tool] get_weather city San Francisco
+    [tool] get_weather done
+    Gator: It is sunny in both Philadelphia and San Francisco.
 
 For other options, run:
 
