@@ -55,6 +55,13 @@ multi MAIN(
     $adapter-conf = "AI::Gator::$adapter";
     $session-class-conf = "AI::Gator::Session::$adapter";
   }
+  with $conf<default_dir> -> $dir is copy {
+    unless $dir.IO.is-absolute {
+      $dir = $*HOME.child($dir);
+    }
+    chdir $dir or die "could not change to $dir";
+    info "changed to $dir";
+  }
 
   info "model $model, adapter $adapter-conf";
   info "session class $session-class-conf";
