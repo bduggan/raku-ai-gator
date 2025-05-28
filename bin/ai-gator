@@ -45,6 +45,21 @@ multi MAIN('tool', $name) {
   repl;
 }
 
+sub get-input(:$history) {
+  my $p = Prompt.new: :editor<LineEditor>, :$history;
+  my $all;
+  my $prompt = t.green ~ "You:" ~ t.text-reset ~ ' ';
+  loop {
+    my $line = $p.readline($prompt);
+    last unless $line;
+    $all ~= $line;
+    last unless $line.ends-with('\\' | '+');
+    $line = $line.substr(0, *-1).trim; # remove trailing \ or +
+  }
+  $p.save-history;
+  $all;
+}
+
 #| Start an AI Gator session
 multi MAIN(
    Str :$model = ($conf<default_model> // $conf<model> // 'gpt-4.4o') #= The name of the model, e.g. 'gpt-4o'
@@ -72,11 +87,9 @@ multi MAIN(
   my $session = $session-class.new: :$session-dir;
 
   say "Type ^D to exit.";
-  my $p = Prompt.new: :editor<LineEditor>, :$history;
   loop {
     unless $session.last-finish-reason.fc eq 'tool_calls'.fc {
-      my $content = trim $p.readline( t.green ~ "You:" ~ t.text-reset ~ ' ') // last;
-      $p.save-history;
+      my $content = get-input(:$history) // last;
       $session.add-message($content);
     }
 

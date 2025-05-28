@@ -187,7 +187,8 @@ class AI::Gator {
       my Str $tool-response = ( (try $callback(|$args)) // '').Str;
       if $! {
         $tool-response = "Error: {$!}";
-        warning "tool call failed: {$!}";
+        my $name = %call-me<name>;
+        warning "tool call failed: $name: {$!}";
       }
       debug "tool response: $tool-response";
       self.add-tool-response: $session, tool_call_id => %call-me<id>, :$tool-response, name => %call-me<name>;
