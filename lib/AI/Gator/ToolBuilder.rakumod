@@ -1,12 +1,15 @@
 unit module AI::Gator::ToolBuilder;
+use Log::Async;
 
 sub build-tool(&func) is export {
   my $sig = &func.signature;
   my %properties;
   my @required;
+  my $where = 'function ' ~ &func.name ~ ' on line ' ~ &func.line;
+  debug "loading function $where";
   for $sig.params.list -> $param {
     my $name = $param.name.subst('$', '');
-    my $description = $param.WHY || die "No description found for parameter $name ($sig)";
+    my $description = $param.WHY.Str.?trim || die "No description found for parameter $name ($where)";
     %properties{$name} = {
       type => $param.does(Numeric) ?? 'number' !! 'string',
       description => ~$param.WHY
@@ -14,9 +17,9 @@ sub build-tool(&func) is export {
     @required.push($name) if ($param.suffix // '') eq '!';
   }
 
-  my $description = &func.WHY;
+  my $description = &func.WHY.Str.trim;
   without $description {
-    note "Missing description for { &func.name } in { &func.file } lines { &func.line }";
+    note "Missing description for { &func.name } at line { &func.line }";
     exit;
   }
 
@@ -24,7 +27,7 @@ sub build-tool(&func) is export {
     type => 'function',
     function => {
        name => &func.name,
-       description => ~( &func.WHY or die "No description found for { &func.name }" ),
+       :$description,
        parameters => {
          type => 'object',
          properties => %properties,

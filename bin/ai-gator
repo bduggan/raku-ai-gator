@@ -29,7 +29,10 @@ my $*tool-dir = $*GATOR-HOME.child('tools');
 multi MAIN('tools') {
   info "looking for tools in $*tool-dir";
   my $tools = get-tools;
-  say join "\n", $tools.map: *<spec><function><name description>.fmt('%25s', ' : ')
+  for $tools.map: *<spec><function><name description> -> ( $name, $desc ) {
+    say $name ~ ' : ';
+    say $desc.indent(5);
+  }
 }
 
 #| Try out a tool in a debug repl

@@ -9,14 +9,19 @@ sub get-tools is export {
    return [];
  }
 
- for $*tool-dir.dir -> $file {
+ for $*tool-dir.dir(test => { .ends-with('.raku') }) -> $file {
    info "Loading tools from $file";
    my $code = $file.slurp;
-   $code.EVAL;
+   try $code.EVAL;
+   if $! {
+     error "Failed to load tools from $file: $!";
+     next;
+   }
+   debug "successfully processed $file";
  }
 
  my @names = (OUR::.keys).grep: { .Str ne 'EXPORT' }
- cache @names.map: {
+ cache @names.sort.map: {
     %( spec => build-tool( OUR::{$_} ), func => OUR::{$_} )
  }
 }
