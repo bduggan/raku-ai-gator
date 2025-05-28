@@ -184,7 +184,7 @@ class AI::Gator {
       die "failed to parse tool call arguments: { %call-me<arguments>.raku }" without $args;
 
       my $callback = self.tool-funcs{ %call-me<name> };
-      my Str $tool-response = (try $callback(|$args)).Str;
+      my Str $tool-response = ( (try $callback(|$args)) // '').Str;
       if $! {
         $tool-response = "Error: {$!}";
         warning "tool call failed: {$!}";
