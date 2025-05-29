@@ -1,2 +1,9 @@
+0.0.2 2025-05-29
+   -improve prompt to allow + or \ to continue lines
+   - support default_dir option
+   - handle nil return values from tools
+   - fix tool calls
+   - fix tool building
+
 0.0.1 2025-05-26
    Initial release
