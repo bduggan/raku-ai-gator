@@ -62,7 +62,9 @@ sub get-input(:$history) {
 
 #| Start an AI Gator session
 multi MAIN(
-   Str :$model = ($conf<default_model> // $conf<model> // 'gpt-4.4o') #= The name of the model, e.g. 'gpt-4o'
+   Str :$model = ($conf<default_model> // $conf<model> // 'gpt-4.4o'), #= The name of the model, e.g. 'gpt-4o'
+   Bool :$resume = False, #= Resume the last session
+   Str  :$dir,            #= working directory
 ) {
   my $adapter-conf = 'AI::Gator';
   my $session-class-conf = 'AI::Gator::Session';
@@ -70,7 +72,7 @@ multi MAIN(
     $adapter-conf = "AI::Gator::$adapter";
     $session-class-conf = "AI::Gator::Session::$adapter";
   }
-  with $conf<default_dir> -> $dir is copy {
+  with ($dir // $conf<default_dir>) -> $dir is copy {
     unless $dir.IO.is-absolute {
       $dir = $*HOME.child($dir);
     }
@@ -85,6 +87,16 @@ multi MAIN(
 
   my $client = $adapter-class.new: :$model, tools => get-tools, |%( $base-uri ?? :$base-uri !! Empty);
   my $session = $session-class.new: :$session-dir;
+
+  if $resume {
+    info "Resuming last session from $session-dir";
+    my $last = $session-class.last-session($session-dir);
+    if $last {
+      $session.load($last);
+    } else {
+      warning "No previous session found in $session-dir";
+    }
+  }
 
   say "Type ^D to exit.";
   loop {

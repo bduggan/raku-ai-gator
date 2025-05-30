@@ -47,6 +47,21 @@ class AI::Gator::Session {
     @messages.push: { :$role, :$content };
     @messages;
   }
+
+  method load(IO::Path $file) {
+    info "loading session from {$file}";
+    my $data = from-json $file.slurp;
+    @!messages := $data<messages>;
+    $.last-finish-reason = $data<last_finish_reason> // '';
+    $!session-file = $file;
+    info "loaded session with { @!messages.elems } messages";
+  }
+
+  method last-session(IO::Path $dir) {
+    my @files = $dir.dir(test => *.ends-with('.json'));
+    return unless @files;
+    return @files.sort({ .modified }).tail
+  }
 }
 
 class AI::Gator::Session::Gemini is AI::Gator::Session {
