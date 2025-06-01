@@ -3,16 +3,7 @@ use Log::Async;
 
 use AI::Gator::ToolBuilder;
 
-multi get-tools(:$funcs) is export {
-  my @tools;
-  for $funcs.list -> $func {
-    my $spec = build-tool($func);
-    @tools.push: { spec => $spec, func => $func };
-  }
-  return @tools;
-}
-
-multi get-tools is export {
+sub get-tools is export {
  unless $*tool-dir.IO.d {
    warning "Could not find directory $*tool-dir";
    return [];
