@@ -1,4 +1,5 @@
 use AI::Gator::Session;
+use AI::Gator::ToolBuilder;
 use Log::Async;
 use Terminal::ANSI::OO 't';
 use HTTP::Tiny;
@@ -16,10 +17,16 @@ class AI::Gator {
   has %.tool-funcs;
   has Supply $.tools-supply;
   has $.base-uri = 'https://api.openai.com/v1';
+  has Bool $.quiet = False;
 
   submethod TWEAK {
     $!tools-supply = $!toolbox.Supply;
-    for @!tools -> $tool {
+    for @!tools -> $tool is rw {
+      # if it's a function, build the spec and store it
+      if $tool ~~ Callable {
+        my $spec = build-tool($tool);
+        $tool = { spec => $spec, func => $tool };
+      }
       trace "tool :" ~ to-json $tool<spec>;
       my $name = $tool<spec><function><name>;
       my $func = $tool<func>;
@@ -78,7 +85,7 @@ class AI::Gator {
   }
 
   method output($text) {
-    print $text;
+    print $text unless $!quiet;
   }
 
   # Display a streaming response and also emit tool calls as they come in.
