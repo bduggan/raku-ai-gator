@@ -131,6 +131,7 @@ class AI::Gator {
   }
 
   method chat(AI::Gator::Session $session) {
+      debug "chatting with model { $.model }";
       my $byte-stream = self.chat-stream($session);
       my $json-stream = self.process-byte-stream: $byte-stream, $session;
 
