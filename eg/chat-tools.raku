@@ -1,4 +1,3 @@
-use Log::Async;
 use AI::Gator;
 
 #| Get real time weather for a given city
