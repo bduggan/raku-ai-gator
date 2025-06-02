@@ -3,11 +3,15 @@ use Log::Async;
 
 use AI::Gator::ToolBuilder;
 
+our @TOOLS;
+
 sub get-tools is export {
  unless $*tool-dir.IO.d {
    warning "Could not find directory $*tool-dir";
    return [];
  }
+
+ return @TOOLS if @TOOLS.elems > 0;
 
  for $*tool-dir.dir(test => { .ends-with('.raku') }) -> $file {
    info "Loading tools from $file";
@@ -20,10 +24,11 @@ sub get-tools is export {
    debug "successfully processed $file";
  }
 
- my @names = (OUR::.keys).grep: { .Str ne 'EXPORT' }
- cache @names.sort.map: {
+ my @names = (OUR::.keys).grep: { .Str ne 'EXPORT' | '@TOOLS' }
+ @TOOLS = @names.sort.map: {
     %( spec => build-tool( OUR::{$_} ), func => OUR::{$_} )
  }
+ return @TOOLS;
 }
 
 sub lookup-tool(Str $name) is export {
