@@ -72,6 +72,10 @@ sub get-input(:$history) {
   $all;
 }
 
+multi MAIN("resume-last") {
+  MAIN(:resume);
+}
+
 multi MAIN("resume", Int(Str) $session-id!) {
   MAIN(:$session-id, :resume);
 }
