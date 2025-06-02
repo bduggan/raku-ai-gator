@@ -391,6 +391,22 @@ declarator pod and other native Raku features.
 All sessions are stored in the sessions/ directory, and the REPL stores the history
 in a .history file, readline-style.
 
+=head1 COMMAND LINE OPTIONS
+
+`ai-gator resume-last` will resume the last session, if it exists.
+
+`ai-gator resume session-id` will resume the specified session.
+
+`ai-gator sessions` will list all sessions.
+
+Also in the REPL:
+
+  `\history` will show user + assistant commands
+
+  `\history all` will show all commands, including tool calls
+
+  `\history mine` will show just the user commands
+
 =head1 CONFIGURATION
 
 Set AI_GATOR_HOME to ai-gator's home (by default $HOME/ai-gator).

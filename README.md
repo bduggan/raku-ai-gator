@@ -109,6 +109,23 @@ Tools are defined as Raku functions and converted into an OpenAI or Gemini speci
 
 All sessions are stored in the sessions/ directory, and the REPL stores the history in a .history file, readline-style.
 
+COMMAND LINE OPTIONS
+====================
+
+`ai-gator resume-last` will resume the last session, if it exists.
+
+`ai-gator resume session-id` will resume the specified session.
+
+`ai-gator sessions` will list all sessions.
+
+Also in the REPL:
+
+    `\history` will show user + assistant commands
+
+    `\history all` will show all commands, including tool calls
+
+    `\history mine` will show just the user commands
+
 CONFIGURATION
 =============
 
