@@ -130,6 +130,9 @@ multi MAIN(
         my $how = $content.words[1] // '';
         $session.messages.map: {
           next unless .<content>;
+          if $how eq 'mine' {
+            next unless .<role> eq 'user';
+          }
           if .<role> eq 'tool' {
             if $how ne 'all' {
               say t.yellow ~ '[tool]' ~ t.text-reset;
