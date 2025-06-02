@@ -48,19 +48,30 @@ class AI::Gator::Session {
     @messages;
   }
 
-  method load(IO::Path $file) {
+  multi method load(IO::Path $file) {
     info "loading session from {$file}";
     my $data = from-json $file.slurp;
     @!messages := $data<messages>;
     $.last-finish-reason = $data<last_finish_reason> // '';
     $!session-file = $file;
     info "loaded session with { @!messages.elems } messages";
+    return True;
   }
 
-  method last-session(IO::Path $dir) {
+  method load-last-session(IO::Path $dir) {
     my @files = $dir.dir(test => *.ends-with('.json'));
     return unless @files;
-    return @files.sort({ .modified }).tail
+    return self.load: @files.sort({ .modified }).tail
+  }
+
+  method list-sessions(IO::Path $dir) {
+    my @files = $dir.dir(test => *.ends-with('.json'));
+    return unless @files;
+    @files.sort({ .modified }).map: {
+      my %h = from-json .slurp;
+      %h<filename> = ~$_;
+      %h;
+    }
   }
 }
 

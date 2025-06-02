@@ -35,6 +35,18 @@ multi MAIN('tools') {
   }
 }
 
+#| List previous sessions
+multi MAIN('sessions') {
+  my $session-class = AI::Gator::Session;
+  my $sessions = $session-class.list-sessions($session-dir);
+  for $sessions.list {
+    say ($++).fmt('%3d ')
+    ~ DateTime.new(.<timestamp>).yyyy-mm-dd
+    ~ ' '
+    ~ .<summary>;
+  }
+}
+
 #| Try out a tool in a debug repl
 multi MAIN('tool', $name) {
   my $spec = get-tool-spec($name);
@@ -60,10 +72,15 @@ sub get-input(:$history) {
   $all;
 }
 
+multi MAIN("resume", Int(Str) $session-id!) {
+  MAIN(:$session-id, :resume);
+}
+
 #| Start an AI Gator session
 multi MAIN(
    Str :$model = ($conf<default_model> // $conf<model> // 'gpt-4.4o'), #= The name of the model, e.g. 'gpt-4o'
    Bool :$resume = False, #= Resume the last session
+   Int  :$session-id = 0, #= The session number to resume, for another one besides the last one
    Str  :$dir,            #= working directory
 ) {
   my $adapter-conf = 'AI::Gator';
@@ -89,12 +106,15 @@ multi MAIN(
   my $session = $session-class.new: :$session-dir;
 
   if $resume {
-    info "Resuming last session from $session-dir";
-    my $last = $session-class.last-session($session-dir);
-    if $last {
-      $session.load($last);
+    if $session-id {
+      my $sessions = $session-class.list-sessions($session-dir);
+      my $this = $sessions[$session-id] or exit note "No session with id $session-id found.";
+      say "Resuming session {t.yellow}{ .<summary> }{t.text-reset} from { .<timestamp> }" with $this;
+      $session.load($this<filename>.IO) or exit note "Could not load session { $session-id }";
     } else {
-      warning "No previous session found in $session-dir";
+      $session.load-last-session($session-dir) or do {
+        warning "No previous session found, starting a new one.";
+      }
     }
   }
 
@@ -102,6 +122,21 @@ multi MAIN(
   loop {
     unless $session.last-finish-reason.fc eq 'tool_calls'.fc {
       my $content = get-input(:$history) // last;
+      if $content.words[0] eq '\\history' {
+        my $how = $content.words[1] // '';
+        $session.messages.map: {
+          next unless .<content>;
+          if .<role> eq 'tool' {
+            if $how ne 'all' {
+              say t.yellow ~ '[tool]' ~ t.text-reset;
+              next;
+            }
+          }
+          say t.yellow ~ (.<role> // '' ) ~ t.text-reset ~ ': ' ~ .<content>;
+        }
+
+        redo;
+      }
       $session.add-message($content);
     }
 
