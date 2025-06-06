@@ -1,3 +1,11 @@
+0.0.4 2025-06-06
+  - Add \history command
+  - Add resume-last
+  - Add resume session-id
+  - fix tool command bug
+  - Added --dir and --resume options
+  - More examples
+
 0.0.3 2025-05-29
    - fix release
 
