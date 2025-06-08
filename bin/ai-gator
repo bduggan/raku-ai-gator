@@ -6,6 +6,7 @@ use TOML;
 use Log::Async <warning color use-args>;
 use JSON::Fast;
 use Terminal::ANSI::OO 't';
+use Terminal::UI;
 use HTTP::Tiny;
 use Prompt;
 
@@ -126,30 +127,38 @@ multi MAIN(
   loop {
     unless $session.last-finish-reason.fc eq 'tool_calls'.fc {
       my $content = get-input(:$history) // last;
-      if $content.words[0] eq '\\history' {
-        my $how = $content.words[1] // '';
-        say "Messages in session : { $session.messages.elems }";
-        $session.messages.map: {
-          my $text = .<content> // (.<parts>.map( { .<text> } ).join(" "));
-          unless $text {
-            say t.yellow ~ '[empty]' ~ t.text-reset;
-            next;
-          }
-          if $how eq 'mine' {
-            next unless .<role> eq 'user';
-          }
-          if .<role> eq 'tool' {
-            if $how ne 'all' {
-              say t.yellow ~ '[tool]' ~ t.text-reset;
+      given $content.words[0] {
+        when '\\history' {
+          my $how = $content.words[1] // '';
+          say "Messages in session : { $session.messages.elems }";
+          $session.messages.map: {
+            my $text = .<content> // (.<parts>.map( { .<text> } ).join(" "));
+            unless $text {
+              say t.yellow ~ '[empty]' ~ t.text-reset;
               next;
             }
+            if $how eq 'mine' {
+              next unless .<role> eq 'user';
+            }
+            if .<role> eq 'tool' {
+              if $how ne 'all' {
+                say t.yellow ~ '[tool]' ~ t.text-reset;
+                next;
+              }
+            }
+            say t.yellow ~ (.<role> // '' ) ~ t.text-reset ~ ': ' ~ $text;
           }
-          say t.yellow ~ (.<role> // '' ) ~ t.text-reset ~ ': ' ~ $text;
-        }
 
-        redo;
+          redo;
+        }
+        when '\\inspect' {
+          inspect-session($session);
+          redo;
+        }
+        default {
+           $session.add-message($content);
+        }
       }
-      $session.add-message($content);
     }
 
     my $response = $client.get-response($session);
@@ -161,3 +170,29 @@ multi MAIN(
   }
   $session.save(summary => $client.summarize($session)) if $session.messages > 3;
 } 
+
+sub inspect-session(AI::Gator::Session $session) {
+  my $ui = Terminal::UI.new;
+  $ui.setup(panes => 2);
+  my $top = $ui.panes[0];
+  $session.messages.map: {
+    my $text = .<content> // ( .<parts>.map( { .<text> } ).join(" ") );
+    $top.put: [
+      t.color('#ddff00') => .<role>.fmt('%20s '),
+      t.color('#ffffff') => $text.lines[0]
+    ], meta => %( message => $_ );
+  }
+  my $btm = $ui.panes[1];
+  $btm.auto-scroll = False;
+  $top.on: select => -> :%meta {
+    $btm.clear;
+    my $msg = %meta<message>;
+    my $text = $msg.<content> // ( $msg.<parts>.map( { .<text> } ).join(" ") );
+    for $text.lines -> $line {
+      $btm.put: $line, wrap => 'hard';
+    }
+  }
+  $ui.interact;
+  $ui.shutdown;
+}
+

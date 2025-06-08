@@ -407,6 +407,8 @@ Also in the REPL:
 
   `\history mine` will show just the user commands
 
+  `\inspect` will enter an interactive ui that shows all previous prompts and responses
+
 =head1 CONFIGURATION
 
 Set AI_GATOR_HOME to ai-gator's home (by default $HOME/ai-gator).
