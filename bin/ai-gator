@@ -59,7 +59,7 @@ multi MAIN('tool', $name) {
 }
 
 sub get-input(:$history) {
-  my $p = Prompt.new: :editor<LineEditor>, :$history;
+  my $p = Prompt.new: :editor<Readline>, :$history;
   my $all;
   my $prompt = t.green ~ "You:" ~ t.text-reset ~ ' ';
   loop {
