@@ -124,6 +124,7 @@ multi MAIN(
   }
 
   say "Type ^D to exit.";
+  my $new-messages = 0;
   loop {
     unless $session.last-finish-reason.fc eq 'tool_calls'.fc {
       my $content = get-input(:$history) // last;
@@ -157,6 +158,7 @@ multi MAIN(
         }
         default {
            $session.add-message($content);
+           $new-messages++;
         }
       }
     }
@@ -168,7 +170,7 @@ multi MAIN(
     $response ||= $client.get-response($session);
     $session.add-message: :role<assistant>, $response if $response;
   }
-  $session.save(summary => $client.summarize($session)) if $session.messages > 3;
+  $session.save(summary => $client.summarize($session)) if $session.messages > 3 && $new-messages > 0;
 } 
 
 sub inspect-session(AI::Gator::Session $session) {
@@ -176,7 +178,7 @@ sub inspect-session(AI::Gator::Session $session) {
   $ui.setup(panes => 2);
   my $top = $ui.panes[0];
   $session.messages.map: {
-    my $text = .<content> // ( .<parts>.map( { .<text> } ).join(" ") );
+    my $text is default('') = .<content> // ( .<parts>.map( { .<text> // .raku } ).join(" ") );
     $top.put: [
       t.color('#ddff00') => .<role>.fmt('%20s '),
       t.color('#ffffff') => $text.lines[0]
@@ -187,7 +189,7 @@ sub inspect-session(AI::Gator::Session $session) {
   $top.on: select => -> :%meta {
     $btm.clear;
     my $msg = %meta<message>;
-    my $text = $msg.<content> // ( $msg.<parts>.map( { .<text> } ).join(" ") );
+    my $text = $msg.<content> // ( $msg.<parts>.map( { .<text> // .raku } ).join(" ") );
     for $text.lines -> $line {
       $btm.put: $line, wrap => 'hard';
     }
