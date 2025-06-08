@@ -128,8 +128,13 @@ multi MAIN(
       my $content = get-input(:$history) // last;
       if $content.words[0] eq '\\history' {
         my $how = $content.words[1] // '';
+        say "Messages in session : { $session.messages.elems }";
         $session.messages.map: {
-          next unless .<content>;
+          my $text = .<content> // (.<parts>.map( { .<text> } ).join(" "));
+          unless $text {
+            say t.yellow ~ '[empty]' ~ t.text-reset;
+            next;
+          }
           if $how eq 'mine' {
             next unless .<role> eq 'user';
           }
@@ -139,7 +144,7 @@ multi MAIN(
               next;
             }
           }
-          say t.yellow ~ (.<role> // '' ) ~ t.text-reset ~ ': ' ~ .<content>;
+          say t.yellow ~ (.<role> // '' ) ~ t.text-reset ~ ': ' ~ $text;
         }
 
         redo;
