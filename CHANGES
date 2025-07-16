@@ -1,7 +1,10 @@
+0.0.6 2025-07-16
+  - fix deps
+
 0.0.5 2025-06-11
-    Switch to readline
-    add \inspect
-    fix \history for Gemini
+  - Switch to readline
+  - add \inspect
+  - fix \history for Gemini
 
 0.0.4 2025-06-06
   - Add \history command
