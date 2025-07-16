@@ -32,7 +32,7 @@ multi MAIN('tools', :$*tool-dir = $default-tool-dir) {
   my $tools = get-tools;
   for $tools.map: *<spec><function><name description> -> ( $name, $desc ) {
     say $name ~ ' : ';
-    say $desc.indent(5);
+    say $desc.trim.indent(5);
   }
 }
 
