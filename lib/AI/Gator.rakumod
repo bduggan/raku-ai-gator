@@ -180,7 +180,7 @@ class AI::Gator {
     for $session.tool-calls.list -> %call-me {
       debug "adding tool call " ~ %call-me.raku;
       my $arg-summary = %call-me<arguments>.Str;
-      if $arg-summary.chars > 40 {
+      if $arg-summary.chars > 40 && !%*ENV<AI_GATOR_DEBUG> {
         $arg-summary = %call-me<arguments>.Str.substr(0, 40) ~ '...';
       }
       self.output: t.cyan ~ "[tool]" ~ t.text-reset ~ ' ' ~ %call-me<name> ~ t.color('#8888ff') ~ ' ' ~ $arg-summary;
