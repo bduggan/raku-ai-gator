@@ -131,7 +131,7 @@ Also in the REPL:
 CONFIGURATION
 =============
 
-Set AI_GATOR_HOME to ai-gator's home (by default $HOME/ai-gator).
+The home directory for AI::Gator is ~/.config/ai-gator (or `XDG_CONFIG_HOME`/ai-gator or `AI_GATOR_HOME`).
 
 In this directory, the following files and directories are used:
 

@@ -10,7 +10,8 @@ use Terminal::UI;
 use HTTP::Tiny;
 use Readline;
 
-my $*GATOR-HOME = (%*ENV<AI_GATOR_HOME> // $*HOME.child('ai-gator')).IO;
+my $base = %*ENV<XDG_CONFIG_HOME> // $*HOME.child('.config');
+my $*GATOR-HOME = (%*ENV<AI_GATOR_HOME> // $base.child('ai-gator')).IO;
 $*GATOR-HOME.d or do {
   warning "$*GATOR-HOME not found, creating it.";
   mkdir $*GATOR-HOME;
