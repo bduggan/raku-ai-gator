@@ -84,4 +84,8 @@ class AI::Gator::Session::Gemini is AI::Gator::Session {
     @messages.push: { :$role, parts => [ { text => $content }, ], |%args };
     @messages;
   }
-} 
+}
+
+class AI::Gator::Session::OpenRouter is AI::Gator::Session {
+  # OpenRouter is OpenAI-compatible, so no custom methods needed
+}

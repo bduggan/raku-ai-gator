@@ -280,7 +280,30 @@ class AI::Gator::Gemini is AI::Gator {
           functionResponse => { :$name, response => { content => $tool-response } }
      }, ];
   }
-} 
+}
+
+class AI::Gator::OpenRouter is AI::Gator {
+
+  has $.base-uri = 'https://openrouter.ai/api/v1';
+  has $.key = %*ENV<OPENROUTER_API_KEY>;
+
+  method chat-once($session, :@messages = $session.messages --> Str) {
+    my %more-headers;
+    %more-headers<Authorization> = "Bearer { $.key }" if $.key;
+    return self.post("{ $.base-uri }/chat/completions",
+      %( :$.model, :@messages, :tools(@.tools.map(*<spec>)) ),
+      %more-headers
+    ).&from-json<choices>[0]<message><content>;
+  }
+
+  method chat-stream($session, :@messages = $session.messages --> Supply) {
+    my %more-headers;
+    %more-headers<Authorization> = "Bearer { $.key }" if $.key;
+    return self.post-stream: "{ $.base-uri }/chat/completions",
+      %( :stream, :$.model, :@messages, :tools(@.tools.map(*<spec>)) ),
+      %more-headers;
+  }
+}
 
 =begin pod
 
@@ -381,7 +404,7 @@ Features:
 
 - session storage
 
-- Gemini and OpenAI support
+- Gemini, OpenAI, and OpenRouter support
 
 - REPL interface with history
 
@@ -435,6 +458,11 @@ Sample configuration to use OpenAI:
   model = "gpt-4o"
   base-uri = "https://api.openai.com/v1"
 
+Sample configuration to use OpenRouter:
+
+  model = "mistralai/devstral-2512:free"
+  adapter = 'OpenRouter'
+
 =head1 ENVIRONMENT
 
 - AI_GATOR_HOME: home directory for AI::Gator (default: $HOME/ai-gator)
@@ -442,6 +470,8 @@ Sample configuration to use OpenAI:
 - GEMINI_API_KEY: API key for Gemini (if using Gemini)
 
 - OPENAI_API_KEY: API key for OpenAI (if using OpenAI)
+
+- OPENROUTER_API_KEY: API key for OpenRouter (if using OpenRouter)
 
 =head1 NOTES
 

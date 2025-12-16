@@ -101,7 +101,7 @@ Features:
 
 - session storage
 
-- Gemini and OpenAI support
+- Gemini, OpenAI, and OpenRouter support
 
 - REPL interface with history
 
@@ -156,6 +156,11 @@ Sample configuration to use OpenAI:
     model = "gpt-4o"
     base-uri = "https://api.openai.com/v1"
 
+Sample configuration to use OpenRouter:
+
+    model = "mistralai/devstral-2512:free"
+    adapter = 'OpenRouter'
+
 ENVIRONMENT
 ===========
 
@@ -164,6 +169,8 @@ ENVIRONMENT
 - GEMINI_API_KEY: API key for Gemini (if using Gemini)
 
 - OPENAI_API_KEY: API key for OpenAI (if using OpenAI)
+
+- OPENROUTER_API_KEY: API key for OpenRouter (if using OpenRouter)
 
 NOTES
 =====

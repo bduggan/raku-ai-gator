@@ -24,10 +24,10 @@ warning "No configuration, using defaults." unless $conf;
 my $base-uri = $conf<url>;
 my $session-dir = $*GATOR-HOME.child('sessions');
 my $history = $*GATOR-HOME.child('.history');
-my $*tool-dir = $*GATOR-HOME.child('tools');
+my $default-tool-dir = $*GATOR-HOME.child('tools');
 
 #| List available tools
-multi MAIN('tools') {
+multi MAIN('tools', :$*tool-dir = $default-tool-dir) {
   info "looking for tools in $*tool-dir";
   my $tools = get-tools;
   for $tools.map: *<spec><function><name description> -> ( $name, $desc ) {
@@ -44,12 +44,12 @@ multi MAIN('sessions') {
     say ($++).fmt('%3d ')
     ~ DateTime.new(.<timestamp>).yyyy-mm-dd
     ~ ' '
-    ~ .<summary>;
+    ~ .<summary>.raku.substr(0, 50).fmt('%-50s ');
   }
 }
 
 #| Try out a tool in a debug repl
-multi MAIN('tool', $name) {
+multi MAIN('tool', $name, :$*tool-dir = $default-tool-dir) {
   my $spec = get-tool-spec($name);
   say to-json $spec;
   exit unless $spec;
@@ -86,7 +86,8 @@ multi MAIN(
    Str :$model = ($conf<default_model> // $conf<model> // 'gpt-4.4o'), #= The name of the model, e.g. 'gpt-4o'
    Bool :$resume = False, #= Resume the last session
    Int  :$session-id = 0, #= The session number to resume, for another one besides the last one
-   Str  :$dir,            #= working directory
+   Str  :$dir,    #= working directory
+   :$*tool-dir = $default-tool-dir, #= directory to load tools from
 ) {
   my $adapter-conf = 'AI::Gator';
   my $session-class-conf = 'AI::Gator::Session';
