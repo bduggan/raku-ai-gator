@@ -21,7 +21,7 @@
   ],
   "license" : "MIT",
   "raku" : "6.*",
-  "version" : "0.0.8",
+  "version" : "0.0.9",
   "auth" : "zef:bduggan",
   "source-url" : "git://github.com/bduggan/raku-ai-gator.git"
 }
