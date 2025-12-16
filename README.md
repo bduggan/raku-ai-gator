@@ -164,7 +164,9 @@ Sample configuration to use OpenRouter:
 ENVIRONMENT
 ===========
 
-- AI_GATOR_HOME: home directory for AI::Gator (default: $HOME/ai-gator)
+- AI_GATOR_HOME: home directory for AI::Gator (default: $HOME/.config/ai-gator)
+
+- AI_GATOR_DEBUG: if set, enables debug logging
 
 - GEMINI_API_KEY: API key for Gemini (if using Gemini)
 
