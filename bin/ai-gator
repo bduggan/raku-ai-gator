@@ -8,7 +8,7 @@ use JSON::Fast;
 use Terminal::ANSI::OO 't';
 use Terminal::UI;
 use HTTP::Tiny;
-use Prompt;
+use Readline;
 
 my $*GATOR-HOME = (%*ENV<AI_GATOR_HOME> // $*HOME.child('ai-gator')).IO;
 $*GATOR-HOME.d or do {
@@ -23,7 +23,7 @@ warning "No configuration, using defaults." unless $conf;
 
 my $base-uri = $conf<url>;
 my $session-dir = $*GATOR-HOME.child('sessions');
-my $history = $*GATOR-HOME.child('.history');
+my $history = $*GATOR-HOME.child('.history').Str;
 my $default-tool-dir = $*GATOR-HOME.child('tools');
 
 #| List available tools
@@ -59,7 +59,7 @@ multi MAIN('tool', $name, :$*tool-dir = $default-tool-dir) {
 }
 
 sub get-input(:$history) {
-  my $p = Prompt.new: :editor<Readline>, :$history;
+  my $p = Readline.new;
   my $all;
   my $prompt = t.green ~ "You:" ~ t.text-reset ~ ' ';
   loop {
@@ -69,7 +69,7 @@ sub get-input(:$history) {
     last unless $line.ends-with('\\' | '+');
     $line = $line.substr(0, *-1).trim; # remove trailing \ or +
   }
-  $p.save-history;
+  $p.write-history($history) if $history;
   $all;
 }
 
