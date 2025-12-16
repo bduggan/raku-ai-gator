@@ -44,7 +44,7 @@ multi MAIN('sessions') {
     say ($++).fmt('%3d ')
     ~ DateTime.new(.<timestamp>).yyyy-mm-dd
     ~ ' '
-    ~ .<summary>.raku.substr(0, 50).fmt('%-50s ');
+    ~ .<summary>.lines[0].substr(0, 50).fmt('%-50s ');
   }
 }
 
