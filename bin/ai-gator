@@ -69,6 +69,7 @@ sub get-input(:$history) {
     last unless $line.ends-with('\\' | '+');
     $line = $line.substr(0, *-1).trim; # remove trailing \ or +
   }
+  $p.add-history($all) if $history && $all.defined;
   $p.write-history($history) if $history;
   $all;
 }
