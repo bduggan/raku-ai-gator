@@ -10,7 +10,7 @@ use Terminal::UI;
 use HTTP::Tiny;
 use Readline;
 
-my $base = %*ENV<XDG_CONFIG_HOME> // $*HOME.child('.config');
+my $base = %*ENV<XDG_CONFIG_HOME>.?IO // $*HOME.child('.config');
 my $*GATOR-HOME = (%*ENV<AI_GATOR_HOME> // $base.child('ai-gator')).IO;
 $*GATOR-HOME.d or do {
   warning "$*GATOR-HOME not found, creating it.";
@@ -18,9 +18,23 @@ $*GATOR-HOME.d or do {
 }
 
 my $conf-file = $*GATOR-HOME.child('config.toml');
-warning "Missing config file $conf-file." unless $conf-file.IO.e;
+unless $conf-file.IO.e {
+  say "Missing config file $conf-file.";
+  say "A sample config file has been written.";
+  say "Please edit this file or set environment variables for your LLM provider.";
+  $conf-file.IO.spurt: q:to/CONF/
+  # see https://github.com/bduggan/raku-ai-gator/tree/main?tab=readme-ov-file#configuration-file
+  # You may also need environment variables corresponding to your model, e.g.
+  # GEMINI_API_KEY
+  # OPENROUTER_API_KEY
+  # OPENAI_API_KEY
+
+  model = "gpt-4o"
+  base-uri = "https://api.openai.com/v1"
+  CONF
+}
+
 my $conf = from-toml($conf-file.IO.slurp) if $conf-file.IO.e;
-warning "No configuration, using defaults." unless $conf;
 
 my $base-uri = $conf<url>;
 my $session-dir = $*GATOR-HOME.child('sessions');

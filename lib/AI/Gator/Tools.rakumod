@@ -7,7 +7,8 @@ our @TOOLS;
 
 sub get-tools is export {
  unless $*tool-dir.IO.d {
-   warning "Could not find directory $*tool-dir";
+   info "Making directory $*tool-dir";
+   mkdir $*tool-dir;
    return [];
  }
 
