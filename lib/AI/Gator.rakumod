@@ -18,8 +18,10 @@ class AI::Gator {
   has Supply $.tools-supply;
   has $.base-uri = 'https://api.openai.com/v1';
   has Bool $.quiet = False;
+  has $.key = %*ENV<OPENAI_API_KEY>;
 
   submethod TWEAK {
+    die "OPENAI_API_KEY environment variable is not set. Please set it to use OpenAI." unless $!key;
     $!tools-supply = $!toolbox.Supply;
     for @!tools -> $tool is rw {
       # if it's a function, build the spec and store it
@@ -111,7 +113,7 @@ class AI::Gator {
 
   method chat-once($session, :@messages = $session.messages --> Str) {
     my %more-headers;
-    %more-headers<Authorization> = "Bearer $_" with %*ENV<OPENAI_API_KEY>;
+    %more-headers<Authorization> = "Bearer { $.key }";
     return self.post("{ $.base-uri }/chat/completions",
       %( :$.model, :@messages, :tools(@.tools.map(*<spec>)) ),
       %more-headers
@@ -120,7 +122,7 @@ class AI::Gator {
 
   method chat-stream($session, :@messages = $session.messages --> Supply) {
     my %more-headers;
-    %more-headers<Authorization> = "Bearer $_" with %*ENV<OPENAI_API_KEY>;
+    %more-headers<Authorization> = "Bearer { $.key }";
     return self.post-stream: "{ $.base-uri }/chat/completions",
       %( :stream, :$.model, :@messages, :tools(@.tools.map(*<spec>)) ),
       %more-headers;
@@ -212,6 +214,11 @@ class AI::Gator::Gemini is AI::Gator {
   has $.base-uri = 'https://generativelanguage.googleapis.com/v1beta/models';
   has $.key = %*ENV<GEMINI_API_KEY>;
 
+  submethod TWEAK {
+    die "GEMINI_API_KEY environment variable is not set. Please set it to use Gemini." unless $!key;
+    callsame;
+  }
+
   method chat-once($session, :@messages = $session.messages --> Str) {
     return self.post: "{ $.base-uri }/{ $.model }:generateContent?key={ $.key }", %(
       :contents(@messages),
@@ -287,9 +294,14 @@ class AI::Gator::OpenRouter is AI::Gator {
   has $.base-uri = 'https://openrouter.ai/api/v1';
   has $.key = %*ENV<OPENROUTER_API_KEY>;
 
+  submethod TWEAK {
+    die "OPENROUTER_API_KEY environment variable is not set. Please set it to use OpenRouter." unless $!key;
+    callsame;
+  }
+
   method chat-once($session, :@messages = $session.messages --> Str) {
     my %more-headers;
-    %more-headers<Authorization> = "Bearer { $.key }" if $.key;
+    %more-headers<Authorization> = "Bearer { $.key }";
     return self.post("{ $.base-uri }/chat/completions",
       %( :$.model, :@messages, :tools(@.tools.map(*<spec>)) ),
       %more-headers
@@ -298,7 +310,7 @@ class AI::Gator::OpenRouter is AI::Gator {
 
   method chat-stream($session, :@messages = $session.messages --> Supply) {
     my %more-headers;
-    %more-headers<Authorization> = "Bearer { $.key }" if $.key;
+    %more-headers<Authorization> = "Bearer { $.key }";
     return self.post-stream: "{ $.base-uri }/chat/completions",
       %( :stream, :$.model, :@messages, :tools(@.tools.map(*<spec>)) ),
       %more-headers;
