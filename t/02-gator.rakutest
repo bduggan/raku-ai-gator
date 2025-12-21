@@ -10,6 +10,8 @@ logger.untapped-ok = True;
 
 plan 14;
 
+%*ENV<OPENAI_API_KEY> = 'test-key';
+
 # Mock HTTP::Tiny for testing
 class MockHTTPTiny {
     has %.responses;

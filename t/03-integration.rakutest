@@ -10,6 +10,8 @@ logger.untapped-ok = True;
 
 plan 6;
 
+%*ENV<OPENAI_API_KEY> = 'test-openai-key';
+
 # Mock HTTP client for integration testing
 class IntegrationMockHTTP {
     has @.call-log;
