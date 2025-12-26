@@ -327,7 +327,7 @@ AI::Gator - Ailigator -- your AI Generic Assistant with a Tool-Oriented REPL
 
 =head1 SYNOPSIS
 
-Put this into $HOME/ai-gator/tools/weather.raku:
+Put this into $HOME/.config/ai-gator/tools/weather.raku:
 
   #| Get real time weather for a given city
   our sub get_weather(
