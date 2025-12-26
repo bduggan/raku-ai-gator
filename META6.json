@@ -13,7 +13,7 @@
   "build-depends" : [ ],
   "depends" : [
     "Log::Async:ver<0.0.13>", "HTTP::Tiny", "JSON::Fast", "Terminal::ANSI", "Terminal::UI",
-    "Readline", "TOML"
+    "Readline", "TOML", "IO::Socket::SSL"
   ],
   "description" : "Ailigator: your AI Generic Assistant with a Tool-Oriented REPL",
   "tags" : [
