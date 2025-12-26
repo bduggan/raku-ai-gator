@@ -21,7 +21,6 @@ class AI::Gator {
   has $.key = %*ENV<OPENAI_API_KEY>;
 
   submethod TWEAK {
-    die "OPENAI_API_KEY environment variable is not set. Please set it to use OpenAI." unless $!key;
     $!tools-supply = $!toolbox.Supply;
     for @!tools -> $tool is rw {
       # if it's a function, build the spec and store it

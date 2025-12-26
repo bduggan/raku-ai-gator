@@ -121,8 +121,8 @@ multi MAIN(
 
   info "model $model, adapter $adapter-conf";
   info "session class $session-class-conf";
-  my AI::Gator $adapter-class = $adapter-conf.EVAL.new;
-  my $session-class = $session-class-conf.EVAL.new;
+  my $adapter-class = $adapter-conf.EVAL;
+  my $session-class = $session-class-conf.EVAL;
 
   my $client = $adapter-class.new: :$model, tools => get-tools, |%( $base-uri ?? :$base-uri !! Empty);
   my $session = $session-class.new: :$session-dir;
