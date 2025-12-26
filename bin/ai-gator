@@ -19,23 +19,15 @@ $*GATOR-HOME.d or do {
 
 my $conf-file = $*GATOR-HOME.child('config.toml');
 unless $conf-file.IO.e {
-  say "Missing config file $conf-file.";
-  say "A sample config file has been written.";
-  say "Please edit this file or set environment variables for your LLM provider.";
+  say "Creating default config file $conf-file.";
+  say "see https://github.com/bduggan/raku-ai-gator/tree/main?tab=readme-ov-file#configuration-file";
   $conf-file.IO.spurt: q:to/CONF/
-  # see https://github.com/bduggan/raku-ai-gator/tree/main?tab=readme-ov-file#configuration-file
-  # You may also need environment variables corresponding to your model, e.g.
-  # GEMINI_API_KEY
-  # OPENROUTER_API_KEY
-  # OPENAI_API_KEY
-
-  model = "gpt-4o"
   base-uri = "https://api.openai.com/v1"
+  model = "gpt-4o"
   CONF
 }
 
 my $conf = from-toml($conf-file.IO.slurp) if $conf-file.IO.e;
-
 my $base-uri = $conf<url>;
 my $session-dir = $*GATOR-HOME.child('sessions');
 my $history = $*GATOR-HOME.child('.history').Str;
@@ -99,7 +91,7 @@ multi MAIN("resume", Int(Str) $session-id!) {
 
 #| Start an AI Gator session
 multi MAIN(
-   Str :$model = ($conf<default_model> // $conf<model> // 'gpt-4.4o'), #= The name of the model, e.g. 'gpt-4o'
+   Str :$model = ($conf<default_model> // $conf<model> // fail("no model specified")), #= The name of the model, e.g. 'gpt-4o'
    Bool :$resume = False, #= Resume the last session
    Int  :$session-id = 0, #= The session number to resume, for another one besides the last one
    Str  :$dir,    #= working directory
@@ -111,14 +103,6 @@ multi MAIN(
     $adapter-conf = "AI::Gator::$adapter";
     $session-class-conf = "AI::Gator::Session::$adapter";
   }
-  with ($dir // $conf<default_dir>) -> $dir is copy {
-    unless $dir.IO.is-absolute {
-      $dir = $*HOME.child($dir);
-    }
-    chdir $dir or die "could not change to $dir";
-    info "changed to $dir";
-  }
-
   info "model $model, adapter $adapter-conf";
   info "session class $session-class-conf";
   my $adapter-class = $adapter-conf.EVAL;
