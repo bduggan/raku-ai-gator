@@ -67,6 +67,7 @@ multi MAIN('tool', $name, :$*tool-dir = $default-tool-dir) {
 
 sub get-input(:$history) {
   my $p = Readline.new;
+  $p.read-history($history) if $history;
   my $all;
   my $prompt = t.green ~ "You:" ~ t.text-reset ~ ' ';
   loop {
