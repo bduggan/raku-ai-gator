@@ -1,3 +1,8 @@
+0.0.12 2025-12-28
+  - add read-history
+  - add ssl dependency
+  - remove default_dir config option
+
 0.0.11 2025-12-26
   - improve use of non-openai APIs when openai env is not set
 
