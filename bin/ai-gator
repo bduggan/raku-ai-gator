@@ -28,7 +28,7 @@ unless $conf-file.IO.e {
 }
 
 my $conf = from-toml($conf-file.IO.slurp) if $conf-file.IO.e;
-my $base-uri = $conf<url>;
+my $base-uri = $conf<base-uri>;
 my $session-dir = $*GATOR-HOME.child('sessions');
 my $history = $*GATOR-HOME.child('.history').Str;
 my $default-tool-dir = $*GATOR-HOME.child('tools');
@@ -109,6 +109,7 @@ multi MAIN(
   my $adapter-class = $adapter-conf.EVAL;
   my $session-class = $session-class-conf.EVAL;
 
+  debug "making client with base-uri $base-uri";
   my $client = $adapter-class.new: :$model, tools => get-tools, |%( $base-uri ?? :$base-uri !! Empty);
   my $session = $session-class.new: :$session-dir;
 
