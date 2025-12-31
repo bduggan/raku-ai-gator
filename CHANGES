@@ -1,3 +1,6 @@
+0.0.13 2025-12-31
+  - use base-uri, not url, from conf
+
 0.0.12 2025-12-28
   - add read-history
   - add ssl dependency
