@@ -28,7 +28,11 @@ unless $conf-file.IO.e {
 }
 
 my $conf = from-toml($conf-file.IO.slurp) if $conf-file.IO.e;
-my $base-uri = $conf<base-uri>;
+info "read config from $conf-file";
+my $base-uri = $conf<base-uri> // $conf<url>;
+without $base-uri {
+  info "no base-uri or url specified in config file $conf-file, using OpenAI default";
+}
 my $session-dir = $*GATOR-HOME.child('sessions');
 my $history = $*GATOR-HOME.child('.history').Str;
 my $default-tool-dir = $*GATOR-HOME.child('tools');
@@ -109,7 +113,7 @@ multi MAIN(
   my $adapter-class = $adapter-conf.EVAL;
   my $session-class = $session-class-conf.EVAL;
 
-  debug "making client with base-uri $_" with $base-uri;
+  info "making client with base-uri $_" with $base-uri;
   my $client = $adapter-class.new: :$model, tools => get-tools, |%( $base-uri ?? :$base-uri !! Empty);
   my $session = $session-class.new: :$session-dir;
 

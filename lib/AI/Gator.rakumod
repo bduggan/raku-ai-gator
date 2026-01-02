@@ -112,6 +112,7 @@ class AI::Gator {
 
   method chat-once($session, :@messages = $session.messages --> Str) {
     my %more-headers;
+    info "posting to { $.base-uri }/chat/completions";
     %more-headers<Authorization> = "Bearer { $.key }";
     return self.post("{ $.base-uri }/chat/completions",
       %( :$.model, :@messages, :tools(@.tools.map(*<spec>)) ),
@@ -121,6 +122,7 @@ class AI::Gator {
 
   method chat-stream($session, :@messages = $session.messages --> Supply) {
     my %more-headers;
+    info "posting stream to { $.base-uri }/chat/completions";
     %more-headers<Authorization> = "Bearer { $.key }";
     return self.post-stream: "{ $.base-uri }/chat/completions",
       %( :stream, :$.model, :@messages, :tools(@.tools.map(*<spec>)) ),
