@@ -1,3 +1,7 @@
+0.0.14 2026-01-02
+  - better debug messages, use url from config file too
+  - remove warning for missing url
+
 0.0.13 2025-12-31
   - use base-uri, not url, from conf
 

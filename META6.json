@@ -12,7 +12,7 @@
   },
   "build-depends" : [ ],
   "depends" : [
-    "Log::Async:ver<0.0.13>", "HTTP::Tiny", "JSON::Fast", "Terminal::ANSI", "Terminal::UI",
+    "Log::Async:ver<0.0.14>", "HTTP::Tiny", "JSON::Fast", "Terminal::ANSI", "Terminal::UI",
     "Readline", "TOML", "IO::Socket::SSL"
   ],
   "description" : "Ailigator: your AI Generic Assistant with a Tool-Oriented REPL",
@@ -21,7 +21,7 @@
   ],
   "license" : "MIT",
   "raku" : "6.*",
-  "version" : "0.0.13",
+  "version" : "0.0.14",
   "auth" : "zef:bduggan",
   "source-url" : "git://github.com/bduggan/raku-ai-gator.git"
 }
