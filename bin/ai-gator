@@ -109,7 +109,7 @@ multi MAIN(
   my $adapter-class = $adapter-conf.EVAL;
   my $session-class = $session-class-conf.EVAL;
 
-  debug "making client with base-uri $base-uri";
+  debug "making client with base-uri $_" with $base-uri;
   my $client = $adapter-class.new: :$model, tools => get-tools, |%( $base-uri ?? :$base-uri !! Empty);
   my $session = $session-class.new: :$session-dir;
 
